@@ -59,7 +59,7 @@ library(plotly)
 library(MLmetrics)
 
 # Read Data
-data <- read.csv("data_input/50_Startups.csv", stringsAsFactors = T)
+data <- read.csv("50_Startups.csv", stringsAsFactors = T)
 colnames(data) <- c("rnd","admin", "marketing", "state", "profit")
 head(data)
 ```
