@@ -1,0 +1,223 @@
+---
+title: 'Regression Model: Predicting Profits for 50 Startups'
+author: "Puja Handini"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+    number_sections: yes
+    theme: flatly
+    highlight: zenburn
+    df_print: paged
+  fig_caption: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>"
+)
+
+options(scipen = 999)
+```
+
+<style>
+
+body {
+text-align: justify}
+
+</style>
+
+# Introduction
+Regresi linear merupakan salah satu metode dari *supervised machine learning* yang memiliki tujuan untuk memprediksi target variabel bertipe numerik. Hal yang perlu diperhatikan sebelum membuat regresi linear adalah memastikan hubungan antar variabel target dengan variabel prediktor. 
+
+Sebelum memutuskan untuk berinvestasi, seorang investment analyst membentuk model regresi untuk memprediksi profit dari 50 perusahaan startups. Banyak faktor yang menjadi pertimbangan saat memprediksi profit dari suatu perusahaan, seperti berapa besar biaya opex, RnD, Marketing, dll.
+
+# Load Package dan Read Data
+
+```{r}
+# Load Package
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(plotly)
+library(MLmetrics)
+
+# Read Data
+data <- read.csv("data_input/50_Startups.csv", stringsAsFactors = T)
+colnames(data) <- c("rnd","admin", "marketing", "state", "profit")
+head(data)
+```
+
+* Dataset ini memiliki 5 variable:
+    + rnd: biaya yang dispend untuk Research and Development
+    + admin: biaya administrasi perusahaan
+    + marketing : biaya marketing perusahaan
+    + state : negara bagian dimana startups berasal
+    + profit : profit yang diperoleh perusahaan
+
+# Data Cleansing
+
+## Cek stuktur data
+```{r}
+str(data)
+```
+terlihat bahwa tipe data telah sesuai
+
+## Mengecek Missing Data
+```{r}
+data %>% is.na() %>% colSums()
+```
+Tidak ada data missing
+
+## Summary Data
+```{r}
+summary(data)
+```
+
+# EDA
+
+Korelasi antara predictor numerik dan target.
+```{r}
+ggpairs(data, label = T)
+```
+
+Insight:
+
+* Berdasarkan hasil korelasi diatas, semua predictor memiliki korelasi positif terhadap target (profit)
+* variable rnd dan marketing memiliki korelasi yang paling kuat.
+
+
+# Multiple Linear Regression
+
+- Variable Target = profit
+- Variable Prediktor = All variable
+
+```{r}
+# . artinya menggunakan semua kolom selain target var
+model_multi <- lm(profit ~ ., data)
+
+# lihat summary model
+summary(model_multi)
+```
+- Goodness of Fit
+
+Berdasarkan nilai Adjusted R-squared sebesar 0.9452 berarti sekitar 94,52% variasi dalam data dapat dijelaskan oleh model regresi.
+Ini menunjukkan bahwa model memiliki kinerja yang sangat baik dalam menjelaskan data.
+
+
+- Significant Predictor
+
+Berdasarkan model diatas, terlihat bahwa prediktor _rnd_ memiliki pengaruh yang paling signifikan terhadap target.  
+
+
+# Re-Modeling
+
+Membuat ulang model menggunakan variabel significant dari `model_multi`
+
+- Variable Target = profit
+- Variable Prediktor = rnd
+
+```{r}
+model_simple <- lm(profit ~ rnd, data)
+
+# lihat summary model
+summary(model_simple)
+```
+Berdasarkan nilai R-squared kedua model, diketahui bahwa :
+- Adjusted R-squared pada model_multi  : 0.9452
+- Multiple R-squared pada model_simple : 0.9465
+
+
+`model_simple` memiliki memiliki nilai R-Squared yang lebih besar, artinya model ini memiliki kinerja yang lebih baik dalam menjelaskan data, daripada model dengan keseluruhan prediktor.
+
+# Prediction
+
+Memprediksikan target menggunakan kedua model :
+1. `model_multi`: semua prediktor
+2. `model_simple`: 1 prediktor (rnd)
+
+```{r}
+
+data$pred_multi <- predict(model_multi, data)
+
+data$pred_simple <- predict(model_simple, data)
+
+head(data)
+```
+
+# Model Evaluation
+
+Tujuan: mengetahui apakah model machine learning yang sudah dibuat cukup baik dengan melihat apakah hasil prediksi tersebut sudah menghasilkan error yang paling kecil.
+
+## Mean Absolute Error (MAE)
+
+Mean Absolute Error (MAE) menunjukkan rata-rata dari nilai absolut error. MAE bisa diinterpretasikan sebagai seberapa besar penyimpangan hasil prediksi terhadap nilai aktualnya.
+
+
+```{r}
+# hitung MAE prediksi model multi
+MAE(data$pred_multi, data$profit)
+
+# hitung MAE prediksi model simple
+MAE(data$pred_simple, data$profit)
+```
+
+Notes: Untuk mengetahui apakah nilai MAE yang diperoleh cukup besar/tidak maka perlu dibandingkan dengan range dari target variabelnya.
+
+```{r}
+range(data$profit)
+```
+
+- nilai MAE relatif cukup kecil dibandingkan range data, maka model memiliki error yang cukup kecil. 
+
+- nilai MAE dari model multi lebih rendah dari model simple, artinya model multi membuat prediksi yang lebih akurat dari pada model simple.
+
+## Root Mean Squared Error (RMSE)
+
+RMSE adalah bentuk akar kuadrat dari MSE. Karena sudah diakarkan, maka interpretasinya kurang lebih sama dengan MAE. RMSE dapat digunakan jika kita lebih concern dengan error yang sangat besar.
+
+
+```{r}
+
+# hitung RMSE prediksi model multi
+RMSE(data$pred_multi, data$profit)
+
+# hitung RMSE prediksi model simple
+RMSE(data$pred_simple, data$profit)
+```
+- Nilai RMSE dari model multi lebih rendah, menunjukan model ini lebih akurat dalam membuat prediksi daripada model simple.
+
+
+## Mean Absolute Percentage Error (MAPE)
+
+MAPE menunjukkan seberapa besar penyimpangannya dalam bentuk persentase.
+
+
+```{r warning=FALSE}
+
+# hitung RMSE prediksi model multi
+MAPE(data$pred_multi, data$profit)*100
+
+# hitung RMSE prediksi model simple
+MAPE(data$pred_simple, data$profit)*100
+```
+Dari hasil diatas, terlihat bahwa model multi memiliki nilai MAPE sebesar 10.6%, artinya rata-rata kesalahan prediksi dari model ini adalah 10.6% dari nilai aktualnya.
+
+
+
